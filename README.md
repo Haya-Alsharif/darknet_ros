@@ -10,13 +10,22 @@
 - `darknet_ros/config/ros.yaml` was modified to allow topic name changes for the added publisers and subscribers topics.
 - Code modification in `YoloObjectDetector.cpp` and `YoloObjectDetector.h` indecated by comment line `// addition for pose detection`.
 
-The published topic `/darknet_ros/detection_poses` is of type DetectionPoses that is an array of type DetectionPose containing all the detections in a single image frame. Each DetectionPose message in the array above has the following parameters:
+
+## Build
+```
+cd catkin_workspace/src
+git clone --recursive https://github.com/Haya-Alsharif/darknet_ros
+cd ../
+catkin build darknet_ros -DCMAKE_BUILD_TYPE=Release
+```
+
+## How to use
+The following script shows how to access the content of the publised topic `/darknet_ros/detection_poses` and make decisions. Note that the published topic `/darknet_ros/detection_poses` is of type DetectionPoses that is an array of type DetectionPose containing all the detections in a single image frame. Each DetectionPose message in the array above has the following parameters:
 1) string Class
 2) float probability
 3) geometry_msgs/PoseStamped pose_stamped
 To visualize the position of the detection in RVIZ, we publish messages of type MarkerArray that can be added to your RVIZ enviroment by selecting MarkerArray object and setting its topic to `/darknet_ros/visualization_marker_array`.
 
-The following script shows how to access the content of the publised topic `/darknet_ros/detection_poses` and make decisions.
 ```py
 from darknet_ros_msgs.msg import *
 from geometry_msgs.msg import PoseStamped
@@ -47,15 +56,8 @@ if __name__ == '__main__':
         pass    
 ```
 
-### visualize in rviz
 
-## Build
-```
-cd catkin_workspace/src
-git clone --recursive https://github.com/Haya-Alsharif/darknet_ros
-cd ../
-catkin build darknet_ros -DCMAKE_BUILD_TYPE=Release
-```
+
 
 # YOLO ROS: Real-Time Object Detection for ROS
 
