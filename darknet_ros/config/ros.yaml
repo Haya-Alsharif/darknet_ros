@@ -36,7 +36,7 @@ publishers:
     latch: true
 
   detection_poses:
-    topic: /darknet_ros/detection_image
+    topic: /darknet_ros/detection_poses
     queue_size: 1
     latch: true
 
