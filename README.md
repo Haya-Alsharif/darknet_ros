@@ -38,7 +38,7 @@ def callback(self, msg):
         pub_goal.publish(largest_probability.pose_stamped)
 
 if __name__ == '__main__':
-	try:
+    try:
         rospy.init_node('test_subscribe_darkent', anonymous=True)
         rospy.Subscriber("darknet_ros/detection_poses", DetectionPoses, callback)
         pub_goal = rospy.Publisher("move_base_simple/goal", PoseStamped, queue_size=10)
