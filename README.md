@@ -42,8 +42,8 @@ if __name__ == '__main__':
         rospy.init_node('test_subscribe_darkent', anonymous=True)
         rospy.Subscriber("darknet_ros/detection_poses", DetectionPoses, callback)
         pub_goal = rospy.Publisher("move_base_simple/goal", PoseStamped, queue_size=10)
-
-	except rospy.ROSInterruptException:
+    
+    except rospy.ROSInterruptException:
         pass    
 ```
 
