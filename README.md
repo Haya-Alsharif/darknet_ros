@@ -20,7 +20,7 @@ catkin build darknet_ros -DCMAKE_BUILD_TYPE=Release
 ```
 
 ## How to use
-The following script shows how to access the content of the publised topic `/darknet_ros/detection_poses` and make decisions. Note that the published topic `/darknet_ros/detection_poses` is of type DetectionPoses that is an array of type DetectionPose containing all the detections in a single image frame. Each DetectionPose message in the array above has the following parameters:
+The following script shows how to access the content of the publised topic `/darknet_ros/detection_poses` and make decisions. Note that the its messages is of type DetectionPoses that is an array of type DetectionPose containing all the detections in a single image frame. Each DetectionPose message in the array above has the following parameters:
 1) string Class
 2) float probability
 3) geometry_msgs/PoseStamped pose_stamped
