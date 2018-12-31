@@ -169,6 +169,8 @@ void YoloObjectDetector::init()
 
   // addtion for pose detections
   std::string poseTopicName, infoTopicName, detectionPosesTopicName;
+  int detectionPosesQueueSize;
+  bool detection_posesLatch;
   nodeHandle_.param("subscribers/pose/topic", poseTopicName, std::string("/mavros/local_position/pose"));
   nodeHandle_.param("subscribers/camera_info/topic", infoTopicName, std::string("/camera/camera_info"));
   nodeHandle_.param("publishers/detection_poses/topic", detectionPosesTopicName,std::string("detection_poses"));
