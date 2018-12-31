@@ -1,3 +1,63 @@
+# YOLO ROS WITH POSE TOPIC
+
+## Updates
+2 New message types: DetectionPose and DetectionPoses
+2 New published topics: `/darknet_ros/detection_poses` and `/darknet_ros/visualization_marker_array` for rviz visualization
+1 New subsribed topic: `/mavros/local_position/pose`
+1 Modification to subsriber type: replace `image_transport` with `messga_filter` to allow sync of image and mavros pose
+
+## Message type explained
+`/darknet_ros/detection_poses` is of type DetectionPoses that is an array of type DetectionPose containing all the detections in a single image frame:
+1) DetectionPose[] poses
+
+DetectionPose message has the following parameters:
+1) string Class
+2) float probability
+3) geometry_msgs/PoseStamped pose_stamped
+
+### example use in python
+After launching the darknet_ros it will publish the topic  `/darknet_ros/detection_poses`. Here we show how to access the content of the message and make decisions. Code obtained from Tareks's
+```
+from darknet_ros_msgs.msg import *
+from geometry_msgs.msg import PoseStamped
+
+def callback(self, msg):
+    # from all detected objects, select the one with larges probability
+    largest_probability = max(msg.poses, key=lambda x: x.probability)
+
+    # check if object class match person
+    if largest_probability.Class == "person":
+        # access DetetcionPose message parameters               
+        print largest_probability.Class
+        print largest_probability.probability
+        print largest_probability.pose_stamped.header.stamp
+        print largest_probability.pose_stamped.header.frame_id
+        print largest_probability.pose_stamped.pose.position
+        
+        # publish pose information of most likely object as a goal
+        pub_goal.publish(largest_probability.pose_stamped)
+
+if __name__ == '__main__':
+	try:
+        rospy.init_node('test_subscribe_darkent', anonymous=True)
+		rospy.Subscriber("darknet_ros/detection_poses", DetectionPoses, callback)
+        pub_goal = rospy.Publisher("move_base_simple/goal", PoseStamped, queue_size=10)
+
+	except rospy.ROSInterruptException:
+		pass    
+```
+
+### visualize in rviz
+You can visualize the output in RVIZ by adding a MarkerArray object and set topic to `/darknet_ros/visualization_marker_array`.
+
+## Build
+```
+cd catkin_workspace/src
+git clone --recursive https://github.com/Haya-Alsharif/darknet_ros
+cd ../
+catkin build darknet_ros -DCMAKE_BUILD_TYPE=Release
+```
+
 # YOLO ROS: Real-Time Object Detection for ROS
 
 ## Overview
