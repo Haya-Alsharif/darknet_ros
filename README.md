@@ -1,16 +1,16 @@
 # YOLO ROS WITH POSE TOPIC
 
 ## Updates
-2 New message types: DetectionPose and DetectionPoses
-2 New published topics: `/darknet_ros/detection_poses` and `/darknet_ros/visualization_marker_array` for rviz visualization
-1 New subsribed topic: `/mavros/local_position/pose`
-1 Modification to subsriber type: replace `image_transport` with `messga_filter` to allow sync of image and mavros pose
+- 2 New message types: DetectionPose and DetectionPoses
+- 2 New published topics: `/darknet_ros/detection_poses` and `/darknet_ros/visualization_marker_array` for rviz visualization
+- 1 New subsribed topic: `/mavros/local_position/pose`
+- 1 Modification to subsriber type: replace `image_transport` with `messga_filter` to allow sync of image and mavros pose
 
 ## Message type explained
 `/darknet_ros/detection_poses` is of type DetectionPoses that is an array of type DetectionPose containing all the detections in a single image frame:
 1) DetectionPose[] poses
 
-DetectionPose message has the following parameters:
+Each DetectionPose message in the array above has the following parameters:
 1) string Class
 2) float probability
 3) geometry_msgs/PoseStamped pose_stamped
