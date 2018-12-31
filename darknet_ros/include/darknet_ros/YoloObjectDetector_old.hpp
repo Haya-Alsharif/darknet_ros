@@ -25,11 +25,8 @@
 #include <sensor_msgs/image_encodings.h>
 #include <sensor_msgs/Image.h>
 #include <geometry_msgs/Point.h>
-#include <image_transport/image_transport.h>
-
-//addition for pose dectection
 #include <geometry_msgs/PoseStamped.h>
-#include <sensor_msgs/CameraInfo.h>
+#include <image_transport/image_transport.h>
 #include <image_transport/subscriber_filter.h>
 #include <message_filters/subscriber.h>
 #include <message_filters/synchronizer.h>
@@ -37,8 +34,6 @@
 #include <tf/transform_listener.h>
 #include <visualization_msgs/Marker.h>
 #include <visualization_msgs/MarkerArray.h>
-#include <darknet_ros_msgs/DetectionPoses.h>
-#include <darknet_ros_msgs/DetectionPose.h>
 
 // OpenCv
 #include <opencv2/imgproc/imgproc.hpp>
@@ -47,6 +42,8 @@
 #include <cv_bridge/cv_bridge.h>
 
 // darknet_ros_msgs
+#include <darknet_ros_msgs/DetectionPoses.h>
+#include <darknet_ros_msgs/DetectionPose.h>
 #include <darknet_ros_msgs/BoundingBoxes.h>
 #include <darknet_ros_msgs/BoundingBox.h>
 #include <darknet_ros_msgs/CheckForObjectsAction.h>
@@ -102,6 +99,7 @@ class YoloObjectDetector
    */
   ~YoloObjectDetector();
 
+
  private:
   /*!
    * Reads and verifies the ROS parameters.
@@ -118,7 +116,8 @@ class YoloObjectDetector
    * Callback of camera.
    * @param[in] msg image pointer.
    */
-  void cameraCallback(const sensor_msgs::ImageConstPtr& msg);
+  //void cameraCallback(const sensor_msgs::ImageConstPtr& msg);
+  void cameraPoseCallback(const sensor_msgs::ImageConstPtr& current_image, const geometry_msgs::PoseStamped::ConstPtr& curent_pose);
 
   /*!
    * Check for objects action goal callback.
@@ -160,37 +159,28 @@ class YoloObjectDetector
   image_transport::ImageTransport imageTransport_;
 
   //! ROS subscriber and publisher.
-  // image_transport::Subscriber imageSubscriber_;
+  //image_transport::Subscriber imageSubscriber_;
 
-  // addition for pose detection
-  void cameraPoseCallback(const sensor_msgs::ImageConstPtr& current_image,  const sensor_msgs::CameraInfoConstPtr& cam_info, const geometry_msgs::PoseStamped::ConstPtr& curent_pose);
-  geometry_msgs::PoseStamped currentPose_;
-  darknet_ros_msgs::DetectionPoses detectionPosesResults_;
-  visualization_msgs::MarkerArray markerArrayMsg_;
+  //message_filters::Subscriber<sensor_msgs::Image> subCamera_;
+  image_transport::SubscriberFilter subCamera_;
 
-  float fx_, fy_, cx_, cy_;
-
-  image_transport::SubscriberFilter imageSubscriber_;
-  message_filters::Subscriber<sensor_msgs::CameraInfo> infoSubscriber_;
-  message_filters::Subscriber<geometry_msgs::PoseStamped> poseSubscriber_;
-
-  typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::Image, sensor_msgs::CameraInfo, geometry_msgs::PoseStamped> RangeFinderSyncPolicy; 
+  message_filters::Subscriber<geometry_msgs::PoseStamped> subPose_;
+  typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::Image, geometry_msgs::PoseStamped> RangeFinderSyncPolicy; 
   typedef message_filters::Synchronizer<RangeFinderSyncPolicy> RangeFinderSync;
   boost::shared_ptr<RangeFinderSync> rangeFinderSyncPointer_; 
   tf::TransformListener tfListener_;
   tf::StampedTransform transform_;
-  ros::Publisher detectionPosesPublisher_;
-  ros::Publisher markerPublisher_;
-  // end of addition
 
   ros::Publisher objectPublisher_;
   ros::Publisher boundingBoxesPublisher_;
-  
+  ros::Publisher detectionPosesPublisher_;
+  ros::Publisher pub_marker;
 
   //! Detected objects.
   std::vector<std::vector<RosBox_> > rosBoxes_;
   std::vector<int> rosBoxCounter_;
   darknet_ros_msgs::BoundingBoxes boundingBoxesResults_;
+  darknet_ros_msgs::DetectionPoses detectionPosesResults_;
 
   //! Camera related parameters.
   int frameWidth_;
@@ -239,6 +229,8 @@ class YoloObjectDetector
 
   std_msgs::Header imageHeader_;
   cv::Mat camImageCopy_;
+  geometry_msgs::PoseStamped currentPose_;
+  
   boost::shared_mutex mutexImageCallback_;
 
   bool imageStatus_ = false;

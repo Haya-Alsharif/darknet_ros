@@ -17,6 +17,8 @@ add_message_files(
   FILES
     BoundingBox.msg
     BoundingBoxes.msg
+    DetectionPose.msg
+    DetectionPoses.msg
 )
 
 add_action_files(

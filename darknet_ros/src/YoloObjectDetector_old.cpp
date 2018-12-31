@@ -127,12 +127,13 @@ void YoloObjectDetector::init()
   yoloThread_ = std::thread(&YoloObjectDetector::yolo, this);
 
   // Initialize publisher and subscriber.
-  std::string cameraTopicName;
+  std::string cameraTopicName, poseTopicName;
   int cameraQueueSize;
   std::string objectDetectorTopicName;
   int objectDetectorQueueSize;
   bool objectDetectorLatch;
   std::string boundingBoxesTopicName;
+  std::string detectionPosesTopicName;
   int boundingBoxesQueueSize;
   bool boundingBoxesLatch;
   std::string detectionImageTopicName;
@@ -141,6 +142,9 @@ void YoloObjectDetector::init()
 
   nodeHandle_.param("subscribers/camera_reading/topic", cameraTopicName,
                     std::string("/camera/image_raw"));
+  nodeHandle_.param("subscribers/pose/topic", poseTopicName,
+                    std::string("/mavros/local_position/pose"));
+
   nodeHandle_.param("subscribers/camera_reading/queue_size", cameraQueueSize, 1);
   nodeHandle_.param("publishers/object_detector/topic", objectDetectorTopicName,
                     std::string("found_object"));
@@ -148,6 +152,8 @@ void YoloObjectDetector::init()
   nodeHandle_.param("publishers/object_detector/latch", objectDetectorLatch, false);
   nodeHandle_.param("publishers/bounding_boxes/topic", boundingBoxesTopicName,
                     std::string("bounding_boxes"));
+  nodeHandle_.param("publishers/detection_poses/topic", detectionPosesTopicName,
+                    std::string("detection_poses"));
   nodeHandle_.param("publishers/bounding_boxes/queue_size", boundingBoxesQueueSize, 1);
   nodeHandle_.param("publishers/bounding_boxes/latch", boundingBoxesLatch, false);
   nodeHandle_.param("publishers/detection_image/topic", detectionImageTopicName,
@@ -157,34 +163,29 @@ void YoloObjectDetector::init()
 
   //imageSubscriber_ = imageTransport_.subscribe(cameraTopicName, cameraQueueSize,
   //                                             &YoloObjectDetector::cameraCallback, this);
+  
+  
   objectPublisher_ = nodeHandle_.advertise<std_msgs::Int8>(objectDetectorTopicName,
                                                            objectDetectorQueueSize,
                                                            objectDetectorLatch);
   boundingBoxesPublisher_ = nodeHandle_.advertise<darknet_ros_msgs::BoundingBoxes>(
       boundingBoxesTopicName, boundingBoxesQueueSize, boundingBoxesLatch);
+
+  detectionPosesPublisher_ = nodeHandle_.advertise<darknet_ros_msgs::DetectionPoses>(
+      detectionPosesTopicName, boundingBoxesQueueSize, boundingBoxesLatch);
+
   detectionImagePublisher_ = nodeHandle_.advertise<sensor_msgs::Image>(detectionImageTopicName,
                                                                        detectionImageQueueSize,
                                                                        detectionImageLatch);
 
+  pub_marker = nodeHandle_.advertise<visualization_msgs::MarkerArray>( "visualization_marker_array", 0 );
 
-  // addtion for pose detections
-  std::string poseTopicName, infoTopicName, detectionPosesTopicName;
-  nodeHandle_.param("subscribers/pose/topic", poseTopicName, std::string("/mavros/local_position/pose"));
-  nodeHandle_.param("subscribers/camera_info/topic", infoTopicName, std::string("/camera/camera_info"));
-  nodeHandle_.param("publishers/detection_poses/topic", detectionPosesTopicName,std::string("detection_poses"));
+  //subCamera_.subscribe(nodeHandle_, cameraTopicName.c_str(), cameraQueueSize);
+  subCamera_.subscribe(imageTransport_, cameraTopicName.c_str(), cameraQueueSize);
 
-  imageSubscriber_.subscribe(imageTransport_, cameraTopicName.c_str(), 20);
-  infoSubscriber_.subscribe(nodeHandle_, infoTopicName.c_str(), 20);
-  poseSubscriber_.subscribe(nodeHandle_, poseTopicName.c_str(), 20);
-
-  rangeFinderSyncPointer_.reset(new RangeFinderSync(RangeFinderSyncPolicy(20), imageSubscriber_, infoSubscriber_, poseSubscriber_)); 
-  rangeFinderSyncPointer_->registerCallback(boost::bind(&YoloObjectDetector::cameraPoseCallback, this, _1, _2, _3));
-
-  detectionPosesPublisher_ = nodeHandle_.advertise<darknet_ros_msgs::DetectionPoses>(detectionPosesTopicName, boundingBoxesQueueSize, boundingBoxesLatch);
-  markerPublisher_ = nodeHandle_.advertise<visualization_msgs::MarkerArray>( "visualization_marker_array", 0 );
-  // end addition
-
-
+  subPose_.subscribe(nodeHandle_, poseTopicName.c_str(), cameraQueueSize);
+  rangeFinderSyncPointer_.reset(new RangeFinderSync(RangeFinderSyncPolicy(cameraQueueSize), subCamera_, subPose_)); 
+  rangeFinderSyncPointer_->registerCallback(boost::bind(&YoloObjectDetector::cameraPoseCallback, this, _1, _2));
 
   // Action servers.
   std::string checkForObjectsActionName;
@@ -199,46 +200,38 @@ void YoloObjectDetector::init()
   checkForObjectsActionServer_->start();
 }
 
-void YoloObjectDetector::cameraCallback(const sensor_msgs::ImageConstPtr& msg)
+// void YoloObjectDetector::cameraCallback(const sensor_msgs::ImageConstPtr& msg)
+// {
+//   ROS_DEBUG("[YoloObjectDetector] USB image received.");
+
+//   cv_bridge::CvImagePtr cam_image;
+
+//   try {
+//     cam_image = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8);
+//   } catch (cv_bridge::Exception& e) {
+//     ROS_ERROR("cv_bridge exception: %s", e.what());
+//     return;
+//   }
+
+//   if (cam_image) {
+//     {
+//       boost::unique_lock<boost::shared_mutex> lockImageCallback(mutexImageCallback_);
+//       imageHeader_ = msg->header;
+//       camImageCopy_ = cam_image->image.clone();
+//     }
+//     {
+//       boost::unique_lock<boost::shared_mutex> lockImageStatus(mutexImageStatus_);
+//       imageStatus_ = true;
+//     }
+//     frameWidth_ = cam_image->image.size().width;
+//     frameHeight_ = cam_image->image.size().height;
+//   }
+//   return;
+// }
+
+void YoloObjectDetector::cameraPoseCallback(const sensor_msgs::ImageConstPtr& current_image, const geometry_msgs::PoseStamped::ConstPtr& curent_pose)
 {
   ROS_DEBUG("[YoloObjectDetector] USB image received.");
-
-  cv_bridge::CvImagePtr cam_image;
-
-  try {
-    cam_image = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8);
-  } catch (cv_bridge::Exception& e) {
-    ROS_ERROR("cv_bridge exception: %s", e.what());
-    return;
-  }
-
-  if (cam_image) {
-    {
-      boost::unique_lock<boost::shared_mutex> lockImageCallback(mutexImageCallback_);
-      imageHeader_ = msg->header;
-      camImageCopy_ = cam_image->image.clone();
-    }
-    {
-      boost::unique_lock<boost::shared_mutex> lockImageStatus(mutexImageStatus_);
-      imageStatus_ = true;
-    }
-    frameWidth_ = cam_image->image.size().width;
-    frameHeight_ = cam_image->image.size().height;
-  }
-  return;
-}
-
-// addtion for pose detections
-void YoloObjectDetector::cameraPoseCallback(const sensor_msgs::ImageConstPtr& current_image,  const sensor_msgs::CameraInfoConstPtr& cam_info, const geometry_msgs::PoseStamped::ConstPtr& curent_pose)
-{
-  ROS_DEBUG("[YoloObjectDetector] USB image received.");
-
-  tfListener_.lookupTransform(curent_pose->header.frame_id,curent_pose->header.stamp,current_image->header.frame_id,ros::Time(0),"/world", transform_);
-  currentPose_ = *curent_pose;
-  fx_ = cam_info->K[0]; //focal length along the x-axis
-  fy_ = cam_info->K[4]; //focal length along the y-axis
-  cx_ = cam_info->K[2]; //principal point - x coordinate
-  cy_ = cam_info->K[5]; //principal point - y coordinate
 
   cv_bridge::CvImagePtr cam_image;
 
@@ -254,6 +247,10 @@ void YoloObjectDetector::cameraPoseCallback(const sensor_msgs::ImageConstPtr& cu
       boost::unique_lock<boost::shared_mutex> lockImageCallback(mutexImageCallback_);
       imageHeader_ = current_image->header;
       camImageCopy_ = cam_image->image.clone();
+      currentPose_ = *curent_pose;
+      
+      tfListener_.lookupTransform(curent_pose->header.frame_id,curent_pose->header.stamp,current_image->header.frame_id,ros::Time(0),"/world", transform_);
+
     }
     {
       boost::unique_lock<boost::shared_mutex> lockImageStatus(mutexImageStatus_);
@@ -264,6 +261,7 @@ void YoloObjectDetector::cameraPoseCallback(const sensor_msgs::ImageConstPtr& cu
   }
   return;
 }
+
 
 void YoloObjectDetector::checkForObjectsActionGoalCB()
 {
@@ -441,6 +439,8 @@ void *YoloObjectDetector::detectInThread()
           roiBoxes_[count].h = BoundingBox_height;
           roiBoxes_[count].Class = j;
           roiBoxes_[count].prob = dets[i].prob[j];
+
+          
           count++;
         }
       }
@@ -656,6 +656,8 @@ void *YoloObjectDetector::publishInThread()
     msg.data = num;
     objectPublisher_.publish(msg);
 
+    visualization_msgs::MarkerArray marker_array_msg;
+
     for (int i = 0; i < numClasses_; i++) {
       if (rosBoxCounter_[i] > 0) {
         darknet_ros_msgs::BoundingBox boundingBox;
@@ -675,24 +677,34 @@ void *YoloObjectDetector::publishInThread()
           boundingBox.ymax = ymax;
           boundingBoxesResults_.bounding_boxes.push_back(boundingBox);
 
-          // addition for pose detection
-          float x_center_pixel = xmin + (xmax - xmin)*0.5;
-          float y_center_pixel = ymin + (ymax - ymin)*0.5;
-          float x_center_meter = ((x_center_pixel-cx_)*currentPose_.pose.position.z)/fx_;
-          float y_center_meter = ((y_center_pixel-cy_)*currentPose_.pose.position.z)/fy_;
-          float z_center_meter = currentPose_.pose.position.z;
-          tf::Vector3 object_center(x_center_meter,y_center_meter,z_center_meter);
-          tf::Vector3 object_center_local_origin = transform_(object_center);
           objectPose.Class = classLabels_[i];
           objectPose.probability = rosBoxes_[i][j].prob;
-          objectPose.pose_stamped.pose.position.x = object_center_local_origin.getX();
-          objectPose.pose_stamped.pose.position.y = object_center_local_origin.getY();
-          objectPose.pose_stamped.pose.position.z = object_center_local_origin.getZ();
+
+          //K = [554.3827128226441, 0.0, 320.5, 0.0, 554.3827128226441, 210.5, 0.0, 0.0, 1.0]
+
+          float fx_ = 554.3827128226441; //focal length along the x-axis
+          float fy_ = 554.3827128226441; //focal length along the y-axis
+          float cx_ = 320.5; //principal point - x coordinate
+          float cy_ = 210.5; //principal point - y coordinate
+
+          // compute object center + rotation axis x y z using the 2 points on the object
+          double xPosCenter = xmin + (xmax - xmin)*0.5;
+          double yPosCenter = ymin + (ymax - ymin)*0.5;
+
+          const tf::Vector3 object_center(((xPosCenter-cx_)*currentPose_.pose.position.z)/fx_, ((yPosCenter-cy_)*currentPose_.pose.position.z)/fy_,currentPose_.pose.position.z);
+          
+          tf::Vector3 object_center_transformed = transform_(object_center);
+
+          objectPose.pose_stamped.pose.position.x = object_center_transformed.getX();
+          objectPose.pose_stamped.pose.position.y = object_center_transformed.getY();
+          objectPose.pose_stamped.pose.position.z = object_center_transformed.getZ();
           objectPose.pose_stamped.pose.orientation.w = 1;
+
           objectPose.pose_stamped.header.stamp = ros::Time::now();
           objectPose.pose_stamped.header.frame_id = "local_origin";
           detectionPosesResults_.poses.push_back(objectPose);
 
+          
           visualization_msgs::Marker marker_msg;
           marker_msg.header.frame_id = "local_origin";
           marker_msg.header.stamp = ros::Time();
@@ -707,18 +719,19 @@ void *YoloObjectDetector::publishInThread()
           marker_msg.color.r = 0.0;
           marker_msg.color.g = 1.0;
           marker_msg.color.b = 0.0;
-          markerArrayMsg_.markers.push_back(marker_msg);
+          marker_array_msg.markers.push_back(marker_msg);
         }
       }
     }
+
     boundingBoxesResults_.header.stamp = ros::Time::now();
     boundingBoxesResults_.header.frame_id = "detection";
     boundingBoxesResults_.image_header = headerBuff_[(buffIndex_ + 1) % 3];
     boundingBoxesPublisher_.publish(boundingBoxesResults_);
 
-    // addition for pose detection
+    
     detectionPosesPublisher_.publish(detectionPosesResults_);
-    markerPublisher_.publish(markerArrayMsg_);
+    pub_marker.publish(marker_array_msg);
 
   } else {
     std_msgs::Int8 msg;
@@ -733,11 +746,7 @@ void *YoloObjectDetector::publishInThread()
     checkForObjectsActionServer_->setSucceeded(objectsActionResult, "Send bounding boxes.");
   }
   boundingBoxesResults_.bounding_boxes.clear();
-
-  // addition for pose detection
   detectionPosesResults_.poses.clear();
-  markerArrayMsg_.markers.clear();
-
   for (int i = 0; i < numClasses_; i++) {
     rosBoxes_[i].clear();
     rosBoxCounter_[i] = 0;
@@ -748,3 +757,6 @@ void *YoloObjectDetector::publishInThread()
 
 
 } /* namespace darknet_ros*/
+
+
+

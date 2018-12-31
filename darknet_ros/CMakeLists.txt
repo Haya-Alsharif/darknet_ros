@@ -53,6 +53,7 @@ find_package(catkin REQUIRED
     roscpp
     rospy
     std_msgs
+    tf
     actionlib
     darknet_ros_msgs
     image_transport
@@ -72,6 +73,7 @@ catkin_package(
     roscpp
     actionlib
     rospy
+    tf
     std_msgs
     darknet_ros_msgs
     image_transport
