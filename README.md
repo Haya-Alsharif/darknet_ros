@@ -44,7 +44,7 @@ if __name__ == '__main__':
         pub_goal = rospy.Publisher("move_base_simple/goal", PoseStamped, queue_size=10)
 
 	except rospy.ROSInterruptException:
-		pass    
+        pass    
 ```
 
 ### visualize in rviz
