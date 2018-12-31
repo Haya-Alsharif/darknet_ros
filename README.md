@@ -17,7 +17,7 @@ Each DetectionPose message in the array above has the following parameters:
 
 ### example use in python
 After launching the darknet_ros it will publish the topic  `/darknet_ros/detection_poses`. Here we show how to access the content of the message and make decisions. Code obtained from Tareks's
-```
+```py
 from darknet_ros_msgs.msg import *
 from geometry_msgs.msg import PoseStamped
 
