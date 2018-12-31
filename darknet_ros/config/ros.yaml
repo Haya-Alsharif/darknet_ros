@@ -4,6 +4,15 @@ subscribers:
     topic: /camera/rgb/image_raw
     queue_size: 1
 
+  camera_info:
+    topic: /camera/rgb/camera_info
+    queue_size: 1
+  
+  pose:
+    topic: /mavros/local_position/pose
+    queue_size: 1
+
+
 actions:
 
   camera_reading:
@@ -25,6 +34,12 @@ publishers:
     topic: /darknet_ros/detection_image
     queue_size: 1
     latch: true
+
+  detection_poses:
+    topic: /darknet_ros/detection_image
+    queue_size: 1
+    latch: true
+
 
 image_view:
 

@@ -172,6 +172,8 @@ void YoloObjectDetector::init()
   nodeHandle_.param("subscribers/pose/topic", poseTopicName, std::string("/mavros/local_position/pose"));
   nodeHandle_.param("subscribers/camera_info/topic", infoTopicName, std::string("/camera/camera_info"));
   nodeHandle_.param("publishers/detection_poses/topic", detectionPosesTopicName,std::string("detection_poses"));
+  nodeHandle_.param("publishers/detection_poses/queue_size", detectionPosesQueueSize, 1);
+  nodeHandle_.param("publishers/detection_poses/latch", detection_posesLatch, false);
 
   imageSubscriber_.subscribe(imageTransport_, cameraTopicName.c_str(), 20);
   infoSubscriber_.subscribe(nodeHandle_, infoTopicName.c_str(), 20);
@@ -180,7 +182,7 @@ void YoloObjectDetector::init()
   rangeFinderSyncPointer_.reset(new RangeFinderSync(RangeFinderSyncPolicy(20), imageSubscriber_, infoSubscriber_, poseSubscriber_)); 
   rangeFinderSyncPointer_->registerCallback(boost::bind(&YoloObjectDetector::cameraPoseCallback, this, _1, _2, _3));
 
-  detectionPosesPublisher_ = nodeHandle_.advertise<darknet_ros_msgs::DetectionPoses>(detectionPosesTopicName, boundingBoxesQueueSize, boundingBoxesLatch);
+  detectionPosesPublisher_ = nodeHandle_.advertise<darknet_ros_msgs::DetectionPoses>(detectionPosesTopicName, detectionPosesQueueSize, detection_posesLatch);
   markerPublisher_ = nodeHandle_.advertise<visualization_msgs::MarkerArray>( "visualization_marker_array", 0 );
   // end addition
 

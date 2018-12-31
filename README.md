@@ -1,22 +1,22 @@
 # YOLO ROS WITH POSE TOPIC
 
 ## Updates
+### Modification in `darkenet_ros_msgs`: 
 - 2 New message types: DetectionPose and DetectionPoses
+
+### Modification in `darkenet_ros`: 
 - 2 New published topics: `/darknet_ros/detection_poses` and `/darknet_ros/visualization_marker_array` for rviz visualization
-- 1 New subsribed topic: `/mavros/local_position/pose`
-- 1 Modification to subsriber type: replace `image_transport` with `messga_filter` to allow sync of image and mavros pose
+- 2 New subsribed topic: `/mavros/local_position/pose` and `/camera/rgb/camera_info`
+- `darknet_ros/config/ros.yaml` was modified to allow topic name changes for the added publisers and subscribers topics.
+- Code modification in `YoloObjectDetector.cpp` and `YoloObjectDetector.h` indecated by comment line `// addition for pose detection`.
 
-## Message type explained
-`/darknet_ros/detection_poses` is of type DetectionPoses that is an array of type DetectionPose containing all the detections in a single image frame:
-1) DetectionPose[] poses
-
-Each DetectionPose message in the array above has the following parameters:
+The published topic `/darknet_ros/detection_poses` is of type DetectionPoses that is an array of type DetectionPose containing all the detections in a single image frame. Each DetectionPose message in the array above has the following parameters:
 1) string Class
 2) float probability
 3) geometry_msgs/PoseStamped pose_stamped
+To visualize the position of the detection in RVIZ, we publish messages of type MarkerArray that can be added to your RVIZ enviroment by selecting MarkerArray object and setting its topic to `/darknet_ros/visualization_marker_array`.
 
-### example use in python
-After launching the darknet_ros it will publish the topic  `/darknet_ros/detection_poses`. Here we show how to access the content of the message and make decisions. Code obtained from Tareks's
+The following script shows how to access the content of the publised topic `/darknet_ros/detection_poses` and make decisions.
 ```py
 from darknet_ros_msgs.msg import *
 from geometry_msgs.msg import PoseStamped
@@ -48,7 +48,6 @@ if __name__ == '__main__':
 ```
 
 ### visualize in rviz
-You can visualize the output in RVIZ by adding a MarkerArray object and set topic to `/darknet_ros/visualization_marker_array`.
 
 ## Build
 ```
